@@ -23,13 +23,31 @@ public class DetailFragment extends Fragment {
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_detail, container, false);
-
+        Bundle bundle = getActivity().getIntent().getExtras();
         Intent intent = getActivity().getIntent();
-        if (intent != null && intent.hasExtra(Intent.EXTRA_TEXT)) {
-            String forecastStr = intent.getStringExtra(Intent.EXTRA_TEXT);
+        if (bundle != null) {
 
-            TextView detail = (TextView) view.findViewById(R.id.detail_salat);
-            detail.setText(forecastStr);
+            int id = bundle.getInt("id");
+            String date_for = bundle.getString("date_for");
+            String fajr = bundle.getString("fajr");
+            String dhuhr = bundle.getString("dhuhr");
+            String asr = bundle.getString("asr");
+            String maghrib = bundle.getString("maghrib");
+            String isha = bundle.getString("isha");
+
+            TextView textview_date_for = (TextView) view.findViewById(R.id.textview_date_for);
+            TextView textview_fajr = (TextView) view.findViewById(R.id.textview_fajr);
+            TextView textview_dhuhr = (TextView) view.findViewById(R.id.textview_dhuhr);
+            TextView textview_asr = (TextView) view.findViewById(R.id.textview_asr);
+            TextView textview_maghrib = (TextView) view.findViewById(R.id.textview_maghrib);
+            TextView textview_isha = (TextView) view.findViewById(R.id.textview_isha);
+
+            textview_date_for.setText(date_for);
+            textview_fajr.setText(fajr);
+            textview_dhuhr.setText(dhuhr);
+            textview_asr.setText(asr);
+            textview_maghrib.setText(maghrib);
+            textview_isha.setText(isha);
         }
 
         return view;

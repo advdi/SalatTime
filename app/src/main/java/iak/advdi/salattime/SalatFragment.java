@@ -1,15 +1,16 @@
 package iak.advdi.salattime;
 
 import android.content.Intent;
+import android.database.SQLException;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
 import org.json.JSONArray;
@@ -22,12 +23,14 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.List;
+import java.util.ArrayList;
 
 
 public class SalatFragment extends Fragment {
 
-    private ArrayAdapter<String> mSalatAdapter;
+    public ListAdapter listAdapter;
+    private ListView listView;
+    private ArrayList<SalatTime> salatTimes;
     DBHelper dbh;
 
     public SalatFragment() {
@@ -35,28 +38,58 @@ public class SalatFragment extends Fragment {
     }
 
     @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        /*FetchSalatTask fetchSalatTask = new FetchSalatTask();
+        fetchSalatTask.execute();*/
+
+        dbh = new DBHelper(getActivity());
+        try {
+            dbh.createDatabase();;
+        }
+        catch (IOException e) {
+            throw new Error("Unable to create database");
+        }
+        try {
+            dbh.openDatabase();
+        }
+        catch(SQLException e) {
+            throw e;
+        }
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
-        dbh = new DBHelper(getActivity());
-        List<String> weekSalat = dbh.getAllData();
-        mSalatAdapter = new ArrayAdapter<String>(
-                getActivity(),
-                R.layout.list_item_salat,
-                R.id.list_item_salat_textview,
-                weekSalat
-        );
+        /*salatTimes = dbh.getAllData();*/
+        salatTimes = new ArrayList<>();
+
+        FetchSalatTask fetchSalatTask = new FetchSalatTask();
+        fetchSalatTask.execute();
+
+        listAdapter = new ListAdapter(this.getActivity(), salatTimes);
 
         View view = inflater.inflate(R.layout.fragment_salat, container, false);
 
-        ListView listView = (ListView) view.findViewById(R.id.listview_salat);
-        listView.setAdapter(mSalatAdapter);
+        listView = (ListView) view.findViewById(R.id.listview_salat);
+        listView.setAdapter(listAdapter);
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                String salat = mSalatAdapter.getItem(i);
-                Intent intent = new Intent(getActivity(), DetailActivity.class)
-                        .putExtra(Intent.EXTRA_TEXT, salat);
+
+                Bundle bundle = new Bundle();
+                bundle.putInt("id", salatTimes.get(i).getId());
+                bundle.putString("date_for", salatTimes.get(i).getDate_for());
+                bundle.putString("fajr", salatTimes.get(i).getFajr());
+                bundle.putString("dhuhr", salatTimes.get(i).getDhuhr());
+                bundle.putString("asr", salatTimes.get(i).getAsr());
+                bundle.putString("maghrib", salatTimes.get(i).getMaghrib());
+                bundle.putString("isha", salatTimes.get(i).getIsha());
+
+                Intent intent = new Intent(getActivity(), DetailActivity.class);
+                intent.putExtras(bundle);
                 startActivity(intent);
             }
         });
@@ -64,11 +97,11 @@ public class SalatFragment extends Fragment {
         return view;
     }
 
-    public class FetchSalatTask extends AsyncTask<String, Void, String[]> {
+    public class FetchSalatTask extends AsyncTask<String, Void, ArrayList<SalatTime>> {
 
         private final String LOG_TAG = FetchSalatTask.class.getSimpleName();
 
-        private String[] getSalatDataFromJson(String salatJsonStr) throws JSONException {
+        private ArrayList<SalatTime> getSalatTimeDataFromJson(String salatJsonStr) throws JSONException {
 
             final String TAG_ITEMS = "items";
             final String TAG_DATE_FOR = "date_for";
@@ -81,7 +114,7 @@ public class SalatFragment extends Fragment {
             JSONObject salatJson = new JSONObject(salatJsonStr);
             JSONArray salatArray = salatJson.getJSONArray(TAG_ITEMS);
 
-            String resultStr[] = new String[salatArray.length()];
+            ArrayList<SalatTime> salatTimesList = new ArrayList<>();
             for (int i = 0; i < salatArray.length(); i++) {
 
                 String date_for;
@@ -94,14 +127,17 @@ public class SalatFragment extends Fragment {
                 asr = daySalat.getString(TAG_ASR);
                 maghrib = daySalat.getString(TAG_MAGHRIB);
                 isha = daySalat.getString(TAG_ISHA);
-                resultStr[i] = date_for;
+
+                salatTimesList.add(
+                        new SalatTime(i, date_for, fajr, dhuhr, asr, maghrib, isha)
+                );
             }
 
-            return resultStr;
+            return  salatTimesList;
         }
 
         @Override
-        protected String[] doInBackground(String... params) {
+        protected ArrayList<SalatTime> doInBackground(String... params) {
 
             if(params.length == 0) {
                 return null;
@@ -154,7 +190,7 @@ public class SalatFragment extends Fragment {
             }
 
             try {
-                return getSalatDataFromJson(salatJsonStr);
+                return getSalatTimeDataFromJson(salatJsonStr);
             }
             catch (JSONException e) {
                 Log.e(LOG_TAG, e.getMessage(), e);
@@ -165,12 +201,22 @@ public class SalatFragment extends Fragment {
         }
 
         @Override
-        protected void onPostExecute(String[] result) {
+        protected void onPostExecute(ArrayList<SalatTime> result) {
             if (result != null) {
-                mSalatAdapter.clear();
-                for(String daySalatStr : result) {
-                    mSalatAdapter.add(daySalatStr);
+                salatTimes.clear();
+                for(SalatTime salatTime : result) {
+                    salatTimes.add(salatTime);
+                    dbh.insert(
+                            salatTime.getDate_for(),
+                            salatTime.getFajr(),
+                            salatTime.getDhuhr(),
+                            salatTime.getAsr(),
+                            salatTime.getMaghrib(),
+                            salatTime.getIsha()
+                    );
                 }
+                listAdapter.notifyDataSetChanged();
+                listView.invalidate();
             }
         }
     }

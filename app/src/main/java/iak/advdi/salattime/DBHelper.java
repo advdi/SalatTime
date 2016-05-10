@@ -104,7 +104,7 @@ public class DBHelper extends SQLiteOpenHelper {
         super.close();
     }
 
-    public boolean insert(String date_for, String fajr, String dhuhr, String asr, String maghrib, String isha, String prioritas, String useReminder) {
+    public boolean insert(String date_for, String fajr, String dhuhr, String asr, String maghrib, String isha) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues cv = new ContentValues();
         cv.put("date_for", date_for);
@@ -147,25 +147,24 @@ public class DBHelper extends SQLiteOpenHelper {
         return db.delete("salattime", "_id = ? ", new String[]{Integer.toString(id)});
     }
 
-    public ArrayList<String> getAllData() {
+    public ArrayList<SalatTime> getAllData() {
         myDB.close();
-        ArrayList<String> alist = new ArrayList<String>();
+        ArrayList<SalatTime> alist = new ArrayList<SalatTime>();
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor cur = db.rawQuery("select * from salattime", null);
         cur.moveToFirst();
 
         while (cur.isAfterLast() == false) {
-            String s = new String(
-                    cur.getString(cur.getColumnIndex(kolom_date_for))
-                            /*+ "," +
-                    cur.getInt(cur.getColumnIndex(kolom_id)) + "," +
-                    cur.getString(cur.getColumnIndex(kolom_fajr)) + "," +
-                    cur.getString(cur.getColumnIndex(kolom_dhuhr)) + "," +
-                    cur.getString(cur.getColumnIndex(kolom_asr)) + "," +
-                    cur.getString(cur.getColumnIndex(kolom_maghrib)) + "," +
-                    cur.getString(cur.getColumnIndex(kolom_isha))*/
+            SalatTime salatTime = new SalatTime(
+                    cur.getInt(cur.getColumnIndex(kolom_id)),
+                    cur.getString(cur.getColumnIndex(kolom_date_for)),
+                    cur.getString(cur.getColumnIndex(kolom_fajr)),
+                    cur.getString(cur.getColumnIndex(kolom_dhuhr)),
+                    cur.getString(cur.getColumnIndex(kolom_asr)),
+                    cur.getString(cur.getColumnIndex(kolom_maghrib)),
+                    cur.getString(cur.getColumnIndex(kolom_isha))
             );
-            alist.add(s);
+            alist.add(salatTime);
             cur.moveToNext();
         }
         return alist;
